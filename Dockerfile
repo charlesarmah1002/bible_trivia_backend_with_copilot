@@ -10,6 +10,7 @@ COPY src ./src
 COPY tsconfig.json ./
 
 RUN npm run prisma:generate
+RUN npx prisma db seed
 RUN npm run build
 
 FROM node:22-bookworm-slim AS runtime
