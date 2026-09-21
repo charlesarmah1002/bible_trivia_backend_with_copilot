@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String       @id @default(cuid())
+  username            String
+  normalizedUsername  String       @unique
+  email               String
+  normalizedEmail     String       @unique
+  passwordHash        String
+  role                String       @default("USER")
+  status              String       @default("ACTIVE")
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  lastLoginAt         DateTime?
+  profile             UserProfile?
+  refreshTokens       RefreshToken[]
+  games               Game[]
+  suggestions         Suggestion[] @relation("SuggestionAuthor")
+  reviewedSuggestions Suggestion[] @relation("SuggestionReviewer")
+
+  @@index([role])
+  @@index([status])
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  displayName String?
+  avatarUrl   String?
+  bio         String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  slug      String     @unique
+  name      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  questions Question[]
+}
+
+model Question {
+  id                 String              @id @default(cuid())
+  text               String
+  type               String              @default("MULTIPLE_CHOICE")
+  difficulty         String
+  categoryId         String
+  explanation        String
+  published          Boolean             @default(false)
+  archived           Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  category           Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  options            QuestionOption[]
+  scriptureReference ScriptureReference?
+  gameQuestions      GameQuestion[]
+
+  @@index([published])
+  @@index([archived])
+  @@index([difficulty])
+  @@index([categoryId])
+  @@index([createdAt])
+}
+
+model QuestionOption {
+  id         String         @id @default(cuid())
+  questionId String
+  text       String
+  order      Int
+  isCorrect  Boolean        @default(false)
+  question   Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers    GameAnswer[]
+
+  @@unique([questionId, order])
+  @@index([questionId])
+}
+
+model ScriptureReference {
+  id          String   @id @default(cuid())
+  questionId  String   @unique
+  book        String
+  chapter     Int
+  verse       Int
+  verseEnd    Int?
+  translation String?
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([book, chapter])
+}
+
+model Game {
+  id                   String         @id @default(cuid())
+  userId               String
+  gameType             String         @default("SOLO")
+  status               String         @default("IN_PROGRESS")
+  questionCount        Int
+  currentQuestionIndex Int            @default(0)
+  score                Int            @default(0)
+  correctAnswers       Int            @default(0)
+  incorrectAnswers     Int            @default(0)
+  currentStreak        Int            @default(0)
+  longestStreak         Int            @default(0)
+  startedAt            DateTime       @default(now())
+  completedAt          DateTime?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  user                 User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  questions            GameQuestion[]
+  answers              GameAnswer[]
+  result               GameResult?
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model GameQuestion {
+  id         String        @id @default(cuid())
+  gameId     String
+  questionId String
+  order      Int
+  game       Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  question   Question      @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  answers    GameAnswer[]
+
+  @@unique([gameId, order])
+  @@unique([gameId, questionId])
+  @@index([gameId])
+  @@index([questionId])
+}
+
+model GameAnswer {
+  id                   String          @id @default(cuid())
+  gameId               String
+  gameQuestionId       String
+  selectedOptionId     String?
+  isCorrect            Boolean
+  responseTimeMs       Int
+  basePoints           Int
+  speedBonus           Int
+  streakBonus          Int
+  difficultyMultiplier Float
+  points               Int
+  submittedAt          DateTime        @default(now())
+  game                 Game            @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameQuestion         GameQuestion    @relation(fields: [gameQuestionId], references: [id], onDelete: Restrict)
+  selectedOption       QuestionOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+
+  @@index([gameId])
+  @@index([gameQuestionId])
+  @@index([selectedOptionId])
+  @@index([submittedAt])
+  @@unique([gameId, gameQuestionId])
+}
+
+model GameResult {
+  id               String   @id @default(cuid())
+  gameId           String   @unique
+  totalScore       Int
+  correctAnswers   Int
+  incorrectAnswers Int
+  accuracy         Float
+  longestStreak    Int
+  completedAt      DateTime
+  game             Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+}
+
+model Suggestion {
+  id                            String    @id @default(cuid())
+  userId                        String
+  type                          String
+  title                         String
+  description                   String
+  status                        String    @default("PENDING")
+  suggestedQuestion             String?
+  suggestedOptions              String?
+  suggestedCorrectOption        String?
+  suggestedScriptureReference   String?
+  adminNotes                    String?
+  reviewedById                  String?
+  reviewedAt                    DateTime?
+  createdAt                     DateTime  @default(now())
+  updatedAt                     DateTime  @updatedAt
+  user                          User      @relation("SuggestionAuthor", fields: [userId], references: [id], onDelete: Restrict)
+  reviewedBy                    User?     @relation("SuggestionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
