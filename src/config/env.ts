@@ -6,7 +6,9 @@ const environmentSchema = z.object({
   JWT_SECRET: z.string().min(1),
   JWT_REFRESH_SECRET: z.string().min(1),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'test', 'production'])
+    .default('development'),
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
 });
 
@@ -19,7 +21,9 @@ export type AppConfig = {
   corsOrigins: string[];
 };
 
-export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppConfig {
+export function loadConfig(
+  environment: NodeJS.ProcessEnv = process.env,
+): AppConfig {
   const parsed = environmentSchema.safeParse(environment);
 
   if (!parsed.success) {
@@ -28,9 +32,12 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
 
   if (
     parsed.data.NODE_ENV === 'production' &&
-    (parsed.data.JWT_SECRET.length < 32 || parsed.data.JWT_REFRESH_SECRET.length < 32)
+    (parsed.data.JWT_SECRET.length < 32 ||
+      parsed.data.JWT_REFRESH_SECRET.length < 32)
   ) {
-    throw new Error('Invalid environment variables: production JWT secrets must be at least 32 characters');
+    throw new Error(
+      'Invalid environment variables: production JWT secrets must be at least 32 characters',
+    );
   }
 
   return {

@@ -12,7 +12,13 @@ const publicQuestionSelect = {
     orderBy: { order: 'asc' as const },
   },
   scriptureReference: {
-    select: { book: true, chapter: true, verse: true, verseEnd: true, translation: true },
+    select: {
+      book: true,
+      chapter: true,
+      verse: true,
+      verseEnd: true,
+      translation: true,
+    },
   },
 } satisfies Prisma.QuestionSelect;
 
@@ -25,8 +31,12 @@ const gameQuestionSelect = {
   },
 } satisfies Prisma.QuestionSelect;
 
-type PublicQuestion = Prisma.QuestionGetPayload<{ select: typeof publicQuestionSelect }>;
-type GameQuestionRecord = Prisma.QuestionGetPayload<{ select: typeof gameQuestionSelect }>;
+type PublicQuestion = Prisma.QuestionGetPayload<{
+  select: typeof publicQuestionSelect;
+}>;
+type GameQuestionRecord = Prisma.QuestionGetPayload<{
+  select: typeof gameQuestionSelect;
+}>;
 
 type GameWithQuestions = Prisma.GameGetPayload<{
   include: {
@@ -83,7 +93,10 @@ export class GameService {
       const currentGameQuestion = game.questions.find(
         (gameQuestion) => gameQuestion.order === game.currentQuestionIndex + 1,
       );
-      if (!currentGameQuestion || currentGameQuestion.questionId !== input.questionId) {
+      if (
+        !currentGameQuestion ||
+        currentGameQuestion.questionId !== input.questionId
+      ) {
         throw new ConflictError('Question is not the current game question');
       }
 
@@ -145,10 +158,16 @@ export class GameService {
         await createGameResult(transaction, updatedGame);
       }
 
-      const nextGameQuestion = game.questions.find((item) => item.order === nextQuestionIndex + 1);
+      const nextGameQuestion = game.questions.find(
+        (item) => item.order === nextQuestionIndex + 1,
+      );
       return {
         correct: isCorrect,
-        selectedAnswer: { id: selectedOption.id, text: selectedOption.text, order: selectedOption.order },
+        selectedAnswer: {
+          id: selectedOption.id,
+          text: selectedOption.text,
+          order: selectedOption.order,
+        },
         explanation: currentGameQuestion.question.explanation,
         scripture: currentGameQuestion.question.scriptureReference,
         pointsEarned: scoring.totalPoints,
@@ -164,7 +183,9 @@ export class GameService {
         completed: isComplete,
         questionNumber: currentGameQuestion.order,
         nextQuestionNumber: isComplete ? null : nextQuestionIndex + 1,
-        nextQuestion: nextGameQuestion ? toPublicQuestion(nextGameQuestion.question) : null,
+        nextQuestion: nextGameQuestion
+          ? toPublicQuestion(nextGameQuestion.question)
+          : null,
       };
     });
   }
@@ -203,7 +224,11 @@ export class GameService {
     return result;
   }
 
-  private async findGame(userId: string, gameId: string, transaction: PrismaClient | Prisma.TransactionClient = this.prisma): Promise<GameWithQuestions> {
+  private async findGame(
+    userId: string,
+    gameId: string,
+    transaction: PrismaClient | Prisma.TransactionClient = this.prisma,
+  ): Promise<GameWithQuestions> {
     const game = await transaction.game.findFirst({
       where: { id: gameId, userId },
       include: {
@@ -220,9 +245,21 @@ export class GameService {
 
 async function createGameResult(
   transaction: PrismaClient | Prisma.TransactionClient,
-  game: Pick<Game, 'id' | 'questionCount' | 'score' | 'correctAnswers' | 'incorrectAnswers' | 'longestStreak' | 'completedAt'>,
+  game: Pick<
+    Game,
+    | 'id'
+    | 'questionCount'
+    | 'score'
+    | 'correctAnswers'
+    | 'incorrectAnswers'
+    | 'longestStreak'
+    | 'completedAt'
+  >,
 ) {
-  const accuracy = game.questionCount === 0 ? 0 : (game.correctAnswers / game.questionCount) * 100;
+  const accuracy =
+    game.questionCount === 0
+      ? 0
+      : (game.correctAnswers / game.questionCount) * 100;
   return transaction.gameResult.create({
     data: {
       gameId: game.id,
@@ -247,18 +284,28 @@ async function createGameResult(
 }
 
 function toGameView(game: GameWithQuestions) {
-  const currentGameQuestion = game.questions.find((item) => item.order === game.currentQuestionIndex + 1);
+  const currentGameQuestion = game.questions.find(
+    (item) => item.order === game.currentQuestionIndex + 1,
+  );
   return {
     id: game.id,
     status: game.status,
     questionCount: game.questionCount,
-    currentQuestion: Math.min(game.currentQuestionIndex + 1, game.questionCount),
+    currentQuestion: Math.min(
+      game.currentQuestionIndex + 1,
+      game.questionCount,
+    ),
     totalQuestions: game.questionCount,
-    progress: game.questionCount === 0 ? 0 : Math.min((game.currentQuestionIndex + 1) / game.questionCount, 1),
+    progress:
+      game.questionCount === 0
+        ? 0
+        : Math.min((game.currentQuestionIndex + 1) / game.questionCount, 1),
     score: game.score,
     currentStreak: game.currentStreak,
     longestStreak: game.longestStreak,
-    currentQuestionData: currentGameQuestion ? toPublicQuestion(currentGameQuestion.question) : null,
+    currentQuestionData: currentGameQuestion
+      ? toPublicQuestion(currentGameQuestion.question)
+      : null,
     startedAt: game.startedAt,
     completedAt: game.completedAt,
   };
@@ -270,7 +317,11 @@ function toPublicQuestion(question: PublicQuestion | GameQuestionRecord) {
     text: question.text,
     type: question.type,
     difficulty: question.difficulty,
-    options: question.options.map(({ id, text, order }) => ({ id, text, order })),
+    options: question.options.map(({ id, text, order }) => ({
+      id,
+      text,
+      order,
+    })),
     scripture: question.scriptureReference,
   };
 }

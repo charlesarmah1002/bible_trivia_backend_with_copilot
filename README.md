@@ -176,6 +176,18 @@ npm run build
 npm start
 ```
 
+## Docker
+
+Docker Compose builds and runs the production API, applies committed Prisma migrations on startup, and stores the SQLite database in a named volume:
+
+```powershell
+$env:JWT_SECRET = "replace-with-a-secret-at-least-32-characters"
+$env:JWT_REFRESH_SECRET = "replace-with-a-different-secret-at-least-32-characters"
+docker compose up --build
+```
+
+The API is available at `http://localhost:3000`. Stop the container with `docker compose down`; the database volume is retained. To remove the database as well, use `docker compose down -v`.
+
 ## Testing
 
 Run the automated tests with:
@@ -196,6 +208,51 @@ npm run format
 ## Checkpoint Status
 
 Checkpoints 1 through 15 are implemented or documented and verified. Checkpoint 16 final backend audit is complete.
+
+## API Routes
+
+Base URL: `http://localhost:3000`
+
+`Public` routes require no token. `Auth` routes require a bearer access token. `Admin` routes require `ADMIN` or `SUPER_ADMIN`.
+
+| Method | Route | Access | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/health` | Public | Health check |
+| `GET` | `/docs` | Public | Swagger UI |
+| `GET` | `/docs/json` | Public | OpenAPI JSON document |
+| `POST` | `/api/v1/auth/register` | Public | Register with username, email, and password |
+| `POST` | `/api/v1/auth/login` | Public | Login with username/email and password |
+| `POST` | `/api/v1/auth/refresh` | Public | Rotate a refresh token |
+| `POST` | `/api/v1/auth/logout` | Public | Revoke a refresh token |
+| `GET` | `/api/v1/auth/me` | Auth | Get the current authenticated user |
+| `GET` | `/api/v1/auth/admin-check` | Admin | Verify admin authorization |
+| `GET` | `/api/v1/users/me` | Auth | Get the current user's profile |
+| `PATCH` | `/api/v1/users/me` | Auth | Update `displayName`, `avatarUrl`, or `bio` |
+| `GET` | `/api/v1/users/:username` | Public | Get a safe public profile and game statistics |
+| `GET` | `/api/v1/questions` | Public | List published questions with pagination and filters |
+| `GET` | `/api/v1/questions/:id` | Public | Get one published question |
+| `POST` | `/api/v1/games` | Auth | Create a server-selected 20-question solo game |
+| `GET` | `/api/v1/games/:gameId` | Auth | Get game state and current question |
+| `POST` | `/api/v1/games/:gameId/answers` | Auth | Submit the current answer and receive scoring |
+| `POST` | `/api/v1/games/:gameId/complete` | Auth | Complete an in-progress game |
+| `GET` | `/api/v1/games/:gameId/results` | Auth | Get completed game results |
+| `GET` | `/api/v1/leaderboard` | Public | Get global or weekly paginated rankings |
+| `GET` | `/api/v1/leaderboard/me` | Auth | Get the current user's rank |
+| `POST` | `/api/v1/suggestions` | Auth | Submit a question, bug, feature, or general suggestion |
+| `GET` | `/api/v1/suggestions/me` | Auth | List the current user's suggestions |
+| `GET` | `/api/v1/admin/dashboard` | Admin | Get backend dashboard metrics |
+| `GET` | `/api/v1/admin/users` | Admin | Search and paginate users with optional status filtering |
+| `GET` | `/api/v1/admin/users/:id` | Admin | Get safe user administration details |
+| `PATCH` | `/api/v1/admin/users/:id/status` | Admin | Change a user's account status |
+| `POST` | `/api/v1/admin/questions` | Admin | Create a validated multiple-choice question |
+| `PATCH` | `/api/v1/admin/questions/:id` | Admin | Update a question |
+| `DELETE` | `/api/v1/admin/questions/:id` | Admin | Archive and unpublish a question |
+| `PATCH` | `/api/v1/admin/questions/:id/publish` | Admin | Publish or unpublish a question |
+| `GET` | `/api/v1/admin/suggestions` | Admin | List suggestions for review |
+| `GET` | `/api/v1/admin/suggestions/:id` | Admin | Get one suggestion for review |
+| `PATCH` | `/api/v1/admin/suggestions/:id` | Admin | Review a suggestion and add admin notes |
+
+Question list filters include `page`, `limit`, `category`, `difficulty`, and `type`. Leaderboard filters include `scope=global|weekly`, `page`, and `limit`. Protected routes use `Authorization: Bearer <access-token>`.
 
 ## Authentication (IMPLEMENTED)
 

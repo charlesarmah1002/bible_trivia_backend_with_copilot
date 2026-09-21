@@ -32,13 +32,16 @@ type BuildAppOptions = {
   prisma?: PrismaClient;
 };
 
-export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
+export async function buildApp(
+  options: BuildAppOptions = {},
+): Promise<FastifyInstance> {
   const config = options.config ?? loadConfig();
   const prisma = options.prisma ?? defaultPrisma;
   const app = Fastify({
     logger: options.logger ?? config.nodeEnv !== 'test',
     requestIdHeader: 'x-request-id',
-    genReqId: (request) => request.headers['x-request-id']?.toString() ?? crypto.randomUUID(),
+    genReqId: (request) =>
+      request.headers['x-request-id']?.toString() ?? crypto.randomUUID(),
   });
   app.decorateRequest('currentUser', undefined);
   app.decorateRequest('userId', undefined);
@@ -46,7 +49,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   await app.register(swagger, {
     mode: 'static',
-    specification: { document: openapiDocument as unknown as OpenAPIV3.Document },
+    specification: {
+      document: openapiDocument as unknown as OpenAPIV3.Document,
+    },
   });
   await app.register(swaggerUi, { routePrefix: '/docs' });
 
@@ -55,13 +60,18 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
     max: 100,
     timeWindow: '1 minute',
     errorResponseBuilder: (_request, context) => {
-      const error = new Error(`Rate limit exceeded. Retry in ${context.after}.`) as Error & { statusCode: number };
+      const error = new Error(
+        `Rate limit exceeded. Retry in ${context.after}.`,
+      ) as Error & { statusCode: number };
       error.statusCode = context.statusCode;
       return error;
     },
   });
   await app.register(cors, {
-    origin: config.corsOrigins.length === 1 ? config.corsOrigins[0] : config.corsOrigins,
+    origin:
+      config.corsOrigins.length === 1
+        ? config.corsOrigins[0]
+        : config.corsOrigins,
   });
 
   app.addHook('onSend', async (request, reply, payload) => {
@@ -86,7 +96,12 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
     reply.status(statusCode).send({
       error: {
-        code: statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : statusCode === 429 ? 'RATE_LIMITED' : 'REQUEST_ERROR',
+        code:
+          statusCode >= 500
+            ? 'INTERNAL_SERVER_ERROR'
+            : statusCode === 429
+              ? 'RATE_LIMITED'
+              : 'REQUEST_ERROR',
         message: statusCode >= 500 ? 'Internal server error' : message,
         requestId: request.id,
       },
@@ -99,8 +114,16 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await registerProfileRoutes(app, new ProfileService(prisma), authService);
   await registerQuestionRoutes(app, new QuestionService(prisma));
   await registerGameRoutes(app, new GameService(prisma), authService);
-  await registerLeaderboardRoutes(app, new LeaderboardService(prisma), authService);
-  await registerSuggestionRoutes(app, new SuggestionService(prisma), authService);
+  await registerLeaderboardRoutes(
+    app,
+    new LeaderboardService(prisma),
+    authService,
+  );
+  await registerSuggestionRoutes(
+    app,
+    new SuggestionService(prisma),
+    authService,
+  );
   await registerAdminRoutes(app, new AdminService(prisma), authService);
 
   return app;
